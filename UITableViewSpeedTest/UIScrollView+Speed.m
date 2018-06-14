@@ -70,12 +70,9 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
     
     [self setPDelegate:delegate];
     Class delegateClass = [self.delegate class];
-    
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        [self exchangeScrollViewDidScrollMethod:delegateClass];
-        [self exchageScrollViewDidEndDeceleratingMethod:delegateClass];
-    });
+
+    [self exchangeScrollViewDidScrollMethod:delegateClass];
+    [self exchageScrollViewDidEndDeceleratingMethod:delegateClass];
     
 }
 
@@ -103,7 +100,8 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
     if (didAddMethod) {
         class_replaceMethod(class, swizzledSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
     } else {
-        method_exchangeImplementations(originalMethod, swizzleMethod);
+//        NSLog(@"不需要重复交换");
+//        method_exchangeImplementations(originalMethod, swizzleMethod);
     }
 }
 
