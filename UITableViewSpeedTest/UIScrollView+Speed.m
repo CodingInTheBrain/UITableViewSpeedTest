@@ -24,6 +24,11 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
  */
 @property (nonatomic) CGFloat lastOffSetY;
 
+/**
+ 记录delegate对象的字典
+ */
+@property (nonatomic ,retain)NSMutableDictionary *ownerDelegateDic;
+
 @end
 
 @implementation UIScrollView (Speed)
@@ -44,7 +49,9 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
 }
 
 - (CGFloat)speed {
-    
+    if (![objc_getAssociatedObject(self, _cmd) floatValue]) {
+        objc_setAssociatedObject(self, _cmd, [NSNumber numberWithFloat:0.0], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     return [objc_getAssociatedObject(self, _cmd) floatValue];
 }
 
@@ -54,6 +61,9 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
 }
 
 - (NSDate *)lastDate {
+    if (!objc_getAssociatedObject(self, _cmd)) {
+        objc_setAssociatedObject(self, _cmd, [NSDate new], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     return objc_getAssociatedObject(self, _cmd);
 }
 
@@ -62,8 +72,21 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
 }
 
 - (CGFloat)lastOffSetY {
-    
+    if (![objc_getAssociatedObject(self, _cmd) floatValue]) {
+        objc_setAssociatedObject(self, _cmd, [NSNumber numberWithFloat:0.0f], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     return  [objc_getAssociatedObject(self, _cmd) floatValue];
+}
+
+- (void)setOwnerDelegateDic:(NSMutableDictionary *)ownerDelegateDic {
+    objc_setAssociatedObject(self, @selector(ownerDelegateDic), ownerDelegateDic, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (NSMutableDictionary *)ownerDelegateDic {
+    if (!objc_getAssociatedObject(self, _cmd)) {
+        objc_setAssociatedObject(self, _cmd, [NSMutableDictionary dictionary], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    return objc_getAssociatedObject(self, _cmd);
 }
 
 - (void)setPDelegate:(id<UIScrollViewDelegate>)delegate {
@@ -71,9 +94,18 @@ CGFloat UIScrollViewSpeedFast   = 3000.f;
     [self setPDelegate:delegate];
     Class delegateClass = [self.delegate class];
 
-    [self exchangeScrollViewDidScrollMethod:delegateClass];
-    [self exchageScrollViewDidEndDeceleratingMethod:delegateClass];
+    //视图过滤 去除因为UITableViewWrapperView 设置delegate 和 UITableView 设置delegate 导致同一delegate对象 执行两次方法转换
+    if ([self isKindOfClass:NSClassFromString(@"UITableViewWrapperView")]) {
+        return;
+    }
     
+    //防止同一delegate对象 多次设置delegate 导致多次 执行方法转换
+    NSString *delegateMemoryAddress = [NSString stringWithFormat:@"%p",&delegate];
+    if (![self.ownerDelegateDic valueForKey:delegateMemoryAddress]) {
+        [self.ownerDelegateDic setValue:delegateMemoryAddress forKey:delegateMemoryAddress];
+        [self exchangeScrollViewDidScrollMethod:delegateClass];
+        [self exchageScrollViewDidEndDeceleratingMethod:delegateClass];
+    }
 }
 
 - (void)exchangeScrollViewDidScrollMethod:(Class)class {
